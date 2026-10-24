@@ -1,1 +1,176 @@
 
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ra, bot simulado</title>
+<style>
+:root{--bg:#f4f5f9;--ink:#1b1f3b;--mut:#636a85;--line:#dfe2ec;--soft:#e9ebf3;--sun:#d99100;--up:#1f8a5b;--down:#c2410c;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#12142a;--ink:#eceef8;--mut:#9aa1c0;--line:#2a2e52;--soft:#1c2040;--sun:#f2b33d;--up:#4cc38a;--down:#ff8a5c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:20px 18px 48px}
+main{max-width:560px;margin:0 auto}
+header{display:flex;align-items:center;gap:14px;padding-bottom:22px}
+header h1{font:600 1.6rem/1.1 ui-serif,Georgia,serif;margin:0}
+header p{margin:2px 0 0;color:var(--mut);font-size:.9rem}
+section{padding:22px 0;border-top:1px solid var(--line)}
+h2{font:600 1.05rem/1.2 system-ui,sans-serif;margin:0 0 12px}
+.big{font:600 3rem/1 ui-serif,Georgia,serif;letter-spacing:-.02em}
+.sub{margin-top:8px;color:var(--mut)}
+.up{color:var(--up)}.down{color:var(--down)}
+#curva{display:block;width:100%;height:auto;margin-top:18px}
+dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:8px 16px}
+dt{color:var(--mut)}dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden;margin:12px 0 4px}
+.bar i{display:block;height:100%;background:var(--sun)}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+th,td{padding:8px 4px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:500;color:var(--mut)}
+details{border-bottom:1px solid var(--line);padding:10px 0}
+summary{cursor:pointer;font-weight:600}
+details p{margin:8px 0 0;color:var(--mut)}
+.nota{color:var(--mut);font-size:.85rem}
+#err{background:var(--soft);padding:14px;border-radius:8px}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <svg id="sol" width="44" height="44" viewBox="0 0 40 40" aria-hidden="true" style="color:var(--mut)">
+    <g id="rayos" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0">
+      <line x1="32" y1="20" x2="37" y2="20"/><line x1="28.5" y1="28.5" x2="32" y2="32"/>
+      <line x1="20" y1="32" x2="20" y2="37"/><line x1="11.5" y1="28.5" x2="8" y2="32"/>
+      <line x1="8" y1="20" x2="3" y2="20"/><line x1="11.5" y1="11.5" x2="8" y2="8"/>
+      <line x1="20" y1="8" x2="20" y2="3"/><line x1="28.5" y1="11.5" x2="32" y2="8"/>
+    </g>
+    <circle id="disco" cx="20" cy="20" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
+  </svg>
+  <div><h1>Ra</h1><p>Bot simulado de BTC/USDT en velas de 4 horas</p></div>
+</header>
+
+<p id="err" hidden>No se pudo leer estado_bot.json. Comprueba que el archivo está en el repositorio y que esta página se sirve desde la misma carpeta.</p>
+
+<section id="resumen">
+  <div class="big" id="capital">…</div>
+  <div class="sub" id="resultado">Cargando…</div>
+  <div id="curvaBox"></div>
+</section>
+
+<section>
+  <h2 id="estadoTitulo">Estado</h2>
+  <div id="estado"></div>
+</section>
+
+<section>
+  <h2>Cómo va la estrategia</h2>
+  <dl id="stats"></dl>
+  <div class="bar"><i id="prog" style="width:0"></i></div>
+  <div class="nota" id="progTxt"></div>
+</section>
+
+<section>
+  <h2>Últimas operaciones</h2>
+  <div class="scroll" id="tabla"></div>
+</section>
+
+<section>
+  <h2>Para ir aprendiendo</h2>
+  <details><summary>Capital simulado</summary><p>Es dinero ficticio. Ra empieza con 50 € y lo va actualizando con cada operación cerrada, descontando comisiones y deslizamiento.</p></details>
+  <details><summary>Stop loss y take profit</summary><p>El stop loss es el precio donde Ra cierra con pérdida para limitarla. El take profit es el precio donde cierra con ganancia. Aquí el objetivo está al doble de distancia que el stop.</p></details>
+  <details><summary>Qué es R</summary><p>Es el resultado medido en unidades de riesgo. Si arriesgas 0,50 € y ganas 1 €, has ganado 2 R. Si pierdes el stop, pierdes 1 R.</p></details>
+  <details><summary>Factor de beneficio</summary><p>Ganancias totales divididas entre pérdidas totales. Por debajo de 1 la estrategia pierde dinero. Hasta tener muchas operaciones no es fiable.</p></details>
+  <details><summary>Caída máxima</summary><p>La mayor bajada desde un máximo de capital hasta el mínimo posterior. Indica cuánto has de aguantar en las malas rachas.</p></details>
+  <details><summary>Por qué hacen falta 30 operaciones</summary><p>Con pocas operaciones, el resultado puede ser pura suerte. Con 30 o más empieza a verse si hay una ventaja real, y aun así conviene confirmarlo con años de datos históricos.</p></details>
+</section>
+
+<p class="nota">Simulación con dinero ficticio. Ra no usa ninguna cuenta ni envía órdenes reales. Nada de esto es asesoramiento financiero.</p>
+</main>
+
+<script>
+const CAP0 = 50, OBJETIVO = 30;
+const $ = id => document.getElementById(id);
+const nf = (n, d = 2) => n.toLocaleString('es-ES', {minimumFractionDigits: d, maximumFractionDigits: d});
+const eur = n => nf(n) + ' €';
+const sig = n => (n >= 0 ? '+' : '−') + nf(Math.abs(n)) + ' €';
+const hora = s => {
+  if (!s) return '—';
+  const d = new Date(/(Z|[+-]\d\d:?\d\d)$/i.test(s) ? s : s + 'Z');
+  return d.toLocaleString('es-ES', {timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
+};
+const suma = a => a.reduce((x, y) => x + y, 0);
+
+async function cargar() {
+  let st, filas = [];
+  try {
+    const r = await fetch('estado_bot.json?t=' + Date.now());
+    if (!r.ok) throw new Error();
+    st = await r.json();
+  } catch (e) { $('err').hidden = false; return; }
+  $('err').hidden = true;
+  try {
+    const r = await fetch('operaciones_paper.csv?t=' + Date.now());
+    if (r.ok) {
+      filas = (await r.text()).trim().split(/\r?\n/).slice(1).filter(Boolean).map(l => {
+        const c = l.split(',');
+        return {sal: c[1], pe: +c[2], ps: +c[3], pnl: +c[5], r: +c[6], cap: +c[7]};
+      });
+    }
+  } catch (e) {}
+  pintar(st, filas);
+}
+
+function pintar(st, f) {
+  const eq = st.equity, res = eq - CAP0, abierta = !!st.pos;
+  $('capital').textContent = eur(eq);
+  $('resultado').innerHTML = '<span class="' + (res >= 0 ? 'up' : 'down') + '">' + sig(res) + ' (' + (res >= 0 ? '+' : '−') + nf(Math.abs(res / CAP0 * 100)) + ' %)</span> desde ' + eur(CAP0);
+
+  $('sol').style.color = abierta ? 'var(--sun)' : 'var(--mut)';
+  $('rayos').setAttribute('opacity', abierta ? 1 : 0);
+  $('disco').setAttribute('fill', abierta ? 'currentColor' : 'none');
+
+  $('estadoTitulo').textContent = abierta ? 'Operación abierta' : 'Esperando una señal de entrada';
+  if (abierta) {
+    const p = st.pos;
+    $('estado').innerHTML = '<dl><dt>Entrada</dt><dd>' + nf(p.entrada) + ' $</dd><dt>Stop loss</dt><dd>' + nf(p.sl) + ' $</dd><dt>Objetivo (take profit)</dt><dd>' + nf(p.tp) + ' $</dd><dt>Cantidad</dt><dd>' + nf(p.qty, 5) + ' BTC</dd><dt>Riesgo asumido</dt><dd>' + eur(p.riesgo) + '</dd><dt>Abierta el</dt><dd>' + hora(p.ts) + '</dd></dl>';
+  } else {
+    $('estado').innerHTML = '<p class="sub" style="margin:0">Ra revisa el mercado cada 4 horas. Con esta estrategia pueden pasar días o semanas entre una operación y la siguiente.</p>';
+  }
+  $('estado').insertAdjacentHTML('beforeend', '<p class="nota" style="margin:12px 0 0">Última vela revisada: ' + hora(st.ultima_vela) + ' (hora de España)</p>');
+
+  const serie = [CAP0].concat(f.map(x => x.cap));
+  if (serie.length < 2) {
+    $('curvaBox').innerHTML = '<p class="nota" style="margin:16px 0 0">La curva de capital aparecerá con la primera operación cerrada.</p>';
+  } else {
+    const W = 320, H = 110, p = 8, mn = Math.min(...serie), mx = Math.max(...serie), rg = (mx - mn) || 1;
+    const X = i => p + i * (W - 2 * p) / (serie.length - 1);
+    const Y = v => H - p - (v - mn) / rg * (H - 2 * p);
+    const pts = serie.map((v, i) => X(i).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ');
+    const u = serie.length - 1;
+    $('curvaBox').innerHTML = '<svg id="curva" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Curva de capital"><line x1="' + p + '" x2="' + (W - p) + '" y1="' + Y(CAP0).toFixed(1) + '" y2="' + Y(CAP0).toFixed(1) + '" stroke="var(--line)" stroke-dasharray="4 4"/><polyline points="' + pts + '" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/><circle cx="' + X(u).toFixed(1) + '" cy="' + Y(serie[u]).toFixed(1) + '" r="4" fill="var(--sun)"/></svg>';
+  }
+
+  const n = f.length, gan = f.filter(x => x.pnl > 0), per = f.filter(x => x.pnl <= 0);
+  const sg = suma(gan.map(x => x.pnl)), sp = Math.abs(suma(per.map(x => x.pnl)));
+  const pf = n === 0 ? '—' : (sp > 0 ? nf(sg / sp) : '∞');
+  let pico = serie[0], dd = 0;
+  serie.forEach(v => { pico = Math.max(pico, v); dd = Math.max(dd, (pico - v) / pico); });
+  $('stats').innerHTML = '<dt>Operaciones cerradas</dt><dd>' + n + '</dd><dt>Ganadas</dt><dd>' + (n ? Math.round(gan.length / n * 100) + ' %' : '—') + '</dd><dt>Factor de beneficio</dt><dd>' + pf + '</dd><dt>R medio por operación</dt><dd>' + (n ? nf(suma(f.map(x => x.r)) / n) : '—') + '</dd><dt>Caída máxima</dt><dd>' + (n ? nf(dd * 100) + ' %' : '—') + '</dd>';
+  $('prog').style.width = Math.min(100, n / OBJETIVO * 100) + '%';
+  $('progTxt').textContent = n + ' de ' + OBJETIVO + ' operaciones, el mínimo para empezar a sacar conclusiones.';
+
+  if (!n) {
+    $('tabla').innerHTML = '<p class="nota" style="margin:0">Todavía no hay operaciones cerradas.</p>';
+  } else {
+    const filasHtml = f.slice(-10).reverse().map(x => '<tr><td>' + hora(x.sal) + '</td><td>' + nf(x.pe, 0) + '</td><td>' + nf(x.ps, 0) + '</td><td class="' + (x.pnl >= 0 ? 'up' : 'down') + '">' + sig(x.pnl) + '</td></tr>').join('');
+    $('tabla').innerHTML = '<table><thead><tr><th>Cierre</th><th>Entrada $</th><th>Salida $</th><th>Resultado</th></tr></thead><tbody>' + filasHtml + '</tbody></table>';
+  }
+}
+
+cargar();
+setInterval(cargar, 300000);
+</script>
+</body>
+</html>
