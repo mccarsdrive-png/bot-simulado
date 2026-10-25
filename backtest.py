@@ -95,8 +95,8 @@ def informe(df, tr, curva):
         g, p = tr[tr.pnl > 0].pnl.sum(), -tr[tr.pnl <= 0].pnl.sum()
         pico = np.maximum.accumulate(curva)
         dd = ((pico - curva) / pico).max() * 100
-        L += [f"- Capital final: {tr.eq.iloc[-1]:.2f} € (inicio {CAP0:.0f} €)",
-              f"- Resultado: {(tr.eq.iloc[-1]/CAP0-1)*100:+.1f} %",
+                L += [f"- Capital final: {tr['eq'].iloc[-1]:.2f} € (inicio {CAPO:.0f} €)",
+              f"- Resultado: {(tr['eq'].iloc[-1]/CAPO-1)*100:+.1f} %",
               f"- Comprar y mantener BTC: {bh:+.1f} %",
               f"- Operaciones: {len(tr)}",
               f"- Ganadas: {(tr.pnl>0).mean()*100:.0f} %",
